@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1,minimum-scale=1,maximum-scale=1">
+  <title></title>
+  <style>
+    body {
+      margin:0;
+      padding:0;
+      overflow:hidden;
+    }
+    button {
+      position:absolute;
+      outline: none;
+      color:#333;
+      background-color:#ccc;
+      font-weight:bold;
+      font-family:'微软雅黑';
+      text-align:center;
+      display:none;
+      top:1%;
+      left:43%;
+      width:20%;
+      height:7%;
+      border-radius:10px;
+      font-size:1.2em;
+    }
+    div {
+      width:100%;
+      height:100%;
+      background-color:pink;
+      position:absolute;
+      left:0;
+      right:0;
+      top:0;
+      bottom:0;
+    }
+
+  </style>
+</head>
+<body>
+<div>
+  <canvas id="canvas"></canvas>
+  <button id="pause">暂停</button>
+</div>
+<script>
+  //1  完成游戏的初始化
+  var canvas=document.getElementById('canvas');
+  canvas.width=document.documentElement.clientWidth;
+  canvas.height=document.documentElement.clientHeight;
+  var context=canvas.getContext('2d');
+  const START=0;
+  const STARTTING=1;
+  const RUNNING=2;
+  const PAUSED=3;
+  const GAMEOVER=4;
+  const WIDTH=canvas.width;
+  const HEIGHT=canvas.height;
+  var state=START;
+  var life=3;
+  var score=0;
+
+
+  //2  加载游戏所需的所有图片
+  var bg=new Image();
+  bg.src='images/background.png';
+  var logo=new Image();
+  logo.src='images/start.png';
+
+  var loadings=[];
+  loadings[0]=new Image();
+  loadings[0].src='images/game_loading1.png';
+  loadings[1]=new Image();
+  loadings[1].src='images/game_loading2.png';
+  loadings[2]=new Image();
+  loadings[2].src='images/game_loading3.png';
+  loadings[3]=new Image();
+  loadings[3].src='images/game_loading4.png';
+
+  var heros=[];
+  heros[0]=new Image();
+  heros[0].src='images/hero1.png';
+  heros[1]=new Image();
+  heros[1].src='images/hero2.png';
+  heros[2]=new Image();
+  heros[2].src='images/hero_blowup_n1.png';
+  heros[3]=new Image();
+  heros[3].src='images/hero_blowup_n2.png';
+  heros[4]=new Image();
+  heros[4].src='images/hero_blowup_n3.png';
+  heros[5]=new Image();
+  heros[5].src='images/hero_blowup_n4.png';
+  var bullet=[];
+  bullet[0]=new Image();
+  bullet[0].src='images/bullet.png';
+
+  var enemies1=[];
+  enemies1[0]=new Image();
+  enemies1[0].src='images/enemy1.png';
+
+  enemies1[1]=new Image();
+  enemies1[1].src='images/enemy1_down1.png';
+  enemies1[2]=new Image();
+  enemies1[2].src='images/enemy1_down2.png';
+  enemies1[3]=new Image();
+  enemies1[3].src='images/enemy1_down3.png';
+  enemies1[4]=new Image();
+  enemies1[4].src='images/enemy1_down4.png';
+  var enemies2=[];
+  enemies2[0]=new Image();
+  enemies2[0].src='images/enemy2.png';
+
+  enemies2[1]=new Image();
+  enemies2[1].src='images/enemy2_down1.png';
+  enemies2[2]=new Image();
+  enemies2[2].src='images/enemy2_down2.png';
+  enemies2[3]=new Image();
+  enemies2[3].src='images/enemy2_down3.png';
+  enemies2[4]=new Image();
+  enemies2[4].src='images/enemy2_down4.png';
+  var enemies3=[];
+  enemies3[0]=new Image();
+  enemies3[0].src='images/enemy3_n1.png';
+  enemies3[1]=new Image();
+  enemies3[1].src='images/enemy3_n2.png';
+
+  enemies3[2]=new Image();
+  enemies3[2].src='images/enemy3_down1.png';
+  enemies3[3]=new Image();
+  enemies3[3].src='images/enemy3_down2.png';
+  enemies3[4]=new Image();
+  enemies3[4].src='images/enemy3_down3.png';
+  enemies3[5]=new Image();
+  enemies3[5].src='images/enemy3_down4.png';
+  enemies3[6]=new Image();
+  enemies3[6].src='images/enemy3_down5.png';
+  enemies3[7]=new Image();
+  enemies3[7].src='images/enemy3_down6.png';
+
+  var paused = new Image();
+  paused.src = "images/game_pause_nor.png";
+
+
+  //3  初始化游戏相关数据
+  var SKY={
+    imgs:bg,
+    width:480,
+    height:852
+  };
+  var LOADING={
+    imgs:loadings,
+    width:WIDTH*0.3,
+    height:HEIGHT*0.05,
+    sum:loadings.length
+  };
+  var HERO={
+    imgs:heros,
+    height:HEIGHT*0.2,
+    width:WIDTH*0.25,
+    sum:heros.length,
+    length:2
+  };
+  var BULLET={
+    imgs:bullet,
+    width:WIDTH*0.02,
+    height:HEIGHT*0.03
+  };
+  var ENEMY1={
+    imgs:enemies1,
+    width:WIDTH*0.118,
+    height:HEIGHT*0.078,
+    length:1,
+    sum:enemies1.length,
+    type:0,
+    score:2
+  };
+  var ENEMY2={
+    imgs:enemies2,
+    width:WIDTH*0.144,
+    height:HEIGHT*0.146,
+    length:1,
+    sum:enemies2.length,
+    type:1,
+    life:3,
+    score:5
+  };
+  var ENEMY3={
+    imgs:enemies3,
+    width:WIDTH*0.35,
+    height:HEIGHT*0.4,
+    sum:enemies3.length,
+    length:2,
+    type:2,
+    life:5,
+    score:10
+  };
+  /*1 无法优化的全局变量
+  * 2和3 来自与服务器端的数据
+  * 前端代码尽量使用通用代码
+  * 可能改变的数据内容都来源于服务器端
+  * */
+
+  //4  创建构造器
+  function Parent(config){
+    this.imgs=config.imgs;
+    this.width=config.width;
+    this.height=config.height;
+    this.time=0;
+    this.index=0;
+    this.sum=config.sum;
+    this.length=config.length;
+    this.score=config.score;
+    this.type=config.type;
+    this.life=config.life;
+    this.down=false;
+    this.canDelete=false;
+    this.x=0;
+    this.y=0;
+    this.paint=function(){
+      context.drawImage(this.imgs[this.index],this.x,this.y,this.width,this.height);
+    };
+    this.step=function(){};
+    this.bang=function(){};
+  }
+  function Sky(config){
+    Parent.call(this,config);
+    this.y1=-HEIGHT;
+    this.y2=0;
+    this.paint=function(){
+      context.drawImage(this.imgs,0,this.y1,WIDTH,HEIGHT);    //第一张
+      context.drawImage(this.imgs,0,this.y2,WIDTH,HEIGHT);    //第二张
+    };
+    //定义移动方法
+    this.step=function(){
+      this.time++;
+      if(this.time%5==0){
+        this.y1++;
+        this.y2++;
+      }
+
+      if(this.y1>HEIGHT){
+        this.y1=-HEIGHT;
+      }
+      if(this.y2>HEIGHT){
+        this.y2=-HEIGHT;
+      }
+    }
+  }
+  function Loading (config){
+    Parent.call(this,config);
+    this.x=0;
+    this.y=HEIGHT-this.height;
+    //切换角标
+    this.step=function(){
+      this.time++;
+      if(this.time%20==0){
+        this.index++;
+      }
+
+      //当index等于4的时候 游戏进入到第三阶段
+      if(this.index==this.sum){
+        state=RUNNING;
+        btn.style.display='block';
+      }
+    }
+  }
+  function Hero(config){
+    Parent.call(this,config);
+    //定义图片坐标值变量
+    this.x=(WIDTH-this.width)/2;
+    this.y=HEIGHT-this.height-30;
+    //定义动画方法
+    this.step=function(){
+      if(this.down){
+        //实现爆破动画图片的切换
+        this.index++;
+        //动画执行完毕后
+        if(this.index==this.sum){
+          if(life>0){
+            //重新创建我方飞机
+            hero=new Hero(HERO);
+          }else {
+            //游戏结束
+            state=GAMEOVER;
+
+          }
+          this.index=this.sum-1;
+        }
+
+      }else {
+        this.index++;
+        this.index%=2;
+      }
+
+    }
+    //增加我方飞机的射击方法
+    this.shoot=function(){
+      //创建子弹对象
+      this.time++;
+      if(this.time%25==0){
+        var bullet=new Bullet(BULLET);
+        bullets[bullets.length]=bullet;
+      }
+    };
+    //增加我方飞机被撞击后的逻辑
+    this.bang=function(){
+      //我方飞机生命值-1
+      life--;
+      //可以执行我方飞机的爆破动画
+      this.down=true;
+      //将数组的角标切换到爆破动画
+      this.index=this.length;
+
+    }
+  }
+  function Bullet(config){
+    Parent.call(this,config);
+    this.x=hero.x+hero.width/2-this.width/2;
+    this.y=hero.y-this.height-10;
+    //移动子弹的方法
+    this.step=function(){
+      this.y-=2;
+    }
+    //定义子弹被撞击后的逻辑
+    this.bang=function(){
+      this.canDelete=true;
+    }
+  }
+  function Enemy(config){
+    Parent.call(this,config);
+    //绘制敌方飞机的坐标值
+    this.x=Math.random()*(WIDTH-this.width);
+    this.y=-this.height;
+    //定义移动方法
+    this.step=function(){
+      if(this.down){
+        //切换爆破动画图片的角标
+        this.time++;
+        if(this.time%5==0){
+          this.index++;
+        }
+
+        //判断动画是否执行完毕
+        if(this.index==this.sum){
+          //如果角标等于飞机图片数组的长度 则动画执行完毕
+          //删除敌方飞机
+          this.canDelete=true;
+          this.index=this.sum-1;
+          //累计得分
+          score+=this.score;
+        }
+
+      }else{
+        this.time++;
+        switch (this.type){
+          case 0:
+            this.y++;
+            break;
+          case 1:
+            if(this.time%3==0){
+              this.y++;
+            }
+            break;
+          case 2:
+            this.index++;
+            this.index%=2;
+            if(this.time%5==0){
+              this.y++;
+            }
+            break;
+        }
+      }
+
+    };
+    //增加用于判断敌方飞机是否被撞击的规则的方法
+    this.hit=function(compant){
+      return compant.y+hero.height > this.y &&
+        compant.y < this.y+this.height &&
+        compant.x < this.x+this.width &&
+        compant.x+compant.width > this.x;
+    };
+    //敌方飞机被撞击后的方法
+    this.bang=function(){
+      //敌方飞机生命值-1
+      this.life--;
+      if(this.life<0){
+        //可以执行敌方飞机的爆破动画
+        this.down=true;
+        //执行爆破动画
+        //操作this.index的值
+        //如果是小中飞机 则从1 开始
+        //如果是大飞机 则从2开始
+        this.index=this.length;
+      }
+    }
+  }
+
+
+  //5  创建所有构造器的对象
+  var sky=new Sky(SKY);
+  var loading=new Loading(LOADING);
+  var hero=new Hero(HERO);
+  var bullets=[];
+  var enemies=[];
+
+  //6  定义用于操作对象的函数
+  function paintBullets(){
+    for(var i=0;i<bullets.length;i++){
+      bullets[i].paint();
+    }
+  }
+  function Bullets(){
+    for(var i=0;i<bullets.length;i++){
+      bullets[i].step();
+      if(bullets[i].y<=-bullets[i].height || bullets[i].canDelete){
+        bullets.splice(i,1);
+      }
+    }
+  }
+  function createEnemies(){
+    var num=Math.floor(Math.random()*100);
+    if(num<75){
+      var enemy=new Enemy(ENEMY1);
+      enemies[enemies.length]=enemy;
+    }else if(num<90){
+      var enemy=new Enemy(ENEMY2);
+      enemies[enemies.length]=enemy;
+    }else{
+      if(enemies.length>0&&enemies[0].type!=2){
+        var enemy=new Enemy(ENEMY3);
+        enemies.splice(0,0,enemy);
+      }
+    }
+  }
+  function paintEnemies(){
+    for(var i=0;i<enemies.length;i++){
+      enemies[i].paint();
+    }
+  }
+  function Enemies(){
+    for(var i=0;i<enemies.length;i++){
+      enemies[i].step();
+      if(enemies[i].y>HEIGHT || enemies[i].canDelete){
+        enemies.splice(i,1);
+      }
+    }
+  }
+
+  //7  其他函数
+  function checkHit (){
+    for(var i=0;i<enemies.length;i++){
+      //获取每个敌方飞机
+      var enemy=enemies[i];
+      //判断我方飞机是否撞击敌机
+      if(enemy.hit(hero)){
+        //判断Bang()方法是否执行
+        if(!enemy.down || !hero.down){
+          //处理敌方飞机被撞击后的逻辑
+          enemy.bang();
+          //处理我方飞机撞击后的逻辑
+          hero.bang();
+        }
+
+      }
+      //判断子弹是否撞击敌机
+      //遍历子弹数组，依次判断
+      for(var j=0;j<bullets.length;j++){
+        //获取每个子弹
+        var bullet=bullets[j];
+        if(enemy.hit(bullet)){
+
+
+          if(!enemy.down || !bullet.canDelete){
+            //处理敌方飞机被撞击后的逻辑
+            enemy.bang();
+            //处理子弹撞击后的逻辑
+            bullet.bang();
+          }
+        }
+
+      }
+    }
+  }
+  function paintText (){
+    context.font='bold 1.4em 微软雅黑';
+    context.fillText('SCORE:'+score,10,30);
+    context.fillText('LIFE:'+life,WIDTH-80,30);
+    context.fillText('By Better Mu',10,HEIGHT-10);
+    context.fillText('2016.10.30',WIDTH-130,HEIGHT-10);
+  }
+  function gameOver(){
+    context.font = "bold 2.8em 微软雅黑";
+    context.fillText("GAME OVER",WIDTH/2-150,HEIGHT/2);
+  }
+
+  //8 事件绑定
+  canvas.onclick=function(){
+    if(state==START){
+      state=STARTTING;
+    }
+  }
+  var x,y;
+  var btn=document.getElementById('pause');
+  var flag=true;
+  canvas.addEventListener('touchmove',function(e){
+    if(state==RUNNING){
+      x= e.touches[0].clientX;
+      y= e.touches[0].clientY;
+      hero.x=x-hero.width/2;
+      hero.y=y-hero.height/2;
+    }
+  });
+  btn.onclick=function(){
+    if(flag){
+      this.innerHTML='继续';
+      state=PAUSED;
+      flag=false;
+    }else{
+      this.innerHTML='暂停';
+      state=RUNNING;
+      flag=true;
+    }
+  };
+
+  //9  核心控制器
+  var time=0;
+  setInterval(function(){
+    sky.paint();
+    sky.step();
+    switch (state) {
+      case START:
+        context.drawImage(logo,0,20,WIDTH,HEIGHT);
+        break;
+      case STARTTING:
+        loading.paint();
+        loading.step();
+        break;
+      case RUNNING:
+        hero.paint();
+        hero.step();
+        hero.shoot();
+        paintBullets();
+        Bullets();
+        time++;
+        if(time%100==0){
+          createEnemies();
+        }
+        paintEnemies();
+        Enemies();
+        checkHit();
+        paintText();
+        break;
+      case PAUSED:
+        hero.paint();
+        paintBullets();
+        paintEnemies();
+        paintText();
+        context.drawImage(paused,WIDTH/2-30,HEIGHT/2-22.5);
+        break;
+      case GAMEOVER:
+        btn.style.display='none';
+        hero.paint();
+        paintBullets();
+        paintEnemies();
+        paintText();
+        gameOver();
+        break;
+    }
+  },10)
+
+
+</script>
+
+</body>
+</html>
